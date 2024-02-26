@@ -1,0 +1,14 @@
+# Default values for orphaned-user-resolver.
+
+settings:
+  SERVER_IP: ""
+  SA_USER: ""
+  SA_PASSWORD: ""
+
+image:
+  repository: meappy/sql-srver-fix-orphaned-users
+  pullPolicy: Always
+  tag: "latest"
+
+secret:
+  enabled: true
