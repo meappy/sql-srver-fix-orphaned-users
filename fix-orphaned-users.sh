@@ -18,8 +18,17 @@
 # 3. Choose the appropriate action from the menu to manage roles and schemas or drop the user.
 # 4. Repeat the process or exit the script as needed.
 
-# Source variables from settings.conf
-source settings.conf
+# Check if settings.conf exists and source it, otherwise use environment variables
+if [ -f settings.conf ]; then
+    source settings.conf
+else
+    SERVER_IP=${SERVER_IP:-"default_server_ip"}
+    SA_USER=${SA_USER:-"default_sa_user"}
+    SA_PASSWORD=${SA_PASSWORD:-"default_sa_password"}
+fi
+
+# Define the path to $SQLCMD
+SQLCMD=${SQLCMD:-"$(which sqlcmd)"}
 
 while true; do
     # Prompt user for the target user and database
@@ -45,12 +54,12 @@ while true; do
         read -p "Enter your choice (1-9): " QUERY_CHOICE
 
         # Connect to the SQL Server and select the database
-        sqlcmd -S $SERVER_IP -U $SA_USER -P $SA_PASSWORD -d $DATABASE -Q "SET NOCOUNT ON;"
+        $SQLCMD -S $SERVER_IP -U $SA_USER -P $SA_PASSWORD -d $DATABASE -Q "SET NOCOUNT ON;"
 
         case "$QUERY_CHOICE" in
             1)
                 # Query to Get Database Roles Owned by a User
-                sqlcmd -S $SERVER_IP -U $SA_USER -P $SA_PASSWORD -d $DATABASE -W -s "|" -Q "
+                $SQLCMD -S $SERVER_IP -U $SA_USER -P $SA_PASSWORD -d $DATABASE -W -s "|" -Q "
                 SELECT
                     dp2.name AS RoleName,
                     dp1.name AS OwnerName
@@ -65,7 +74,7 @@ while true; do
                 ;;
             2)
                 # Query to Get Database Schemas Owned by a User
-                sqlcmd -S $SERVER_IP -U $SA_USER -P $SA_PASSWORD -d $DATABASE -W -s "|" -Q "
+                $SQLCMD -S $SERVER_IP -U $SA_USER -P $SA_PASSWORD -d $DATABASE -W -s "|" -Q "
                 SELECT
                     SCHEMA_NAME AS SchemaName,
                     SCHEMA_OWNER AS OwnerName
@@ -77,7 +86,7 @@ while true; do
                 ;;
             3)
                 # Query to Check ownership of db_owner role
-                sqlcmd -S $SERVER_IP -U $SA_USER -P $SA_PASSWORD -d $DATABASE -W -s "|" -Q "
+                $SQLCMD -S $SERVER_IP -U $SA_USER -P $SA_PASSWORD -d $DATABASE -W -s "|" -Q "
                 SELECT
                     dp.name AS RoleName,
                     dp2.name AS OwnerName
@@ -93,7 +102,7 @@ while true; do
                 ;;
             4)
                 # Query to Transfer ownership of the "db_owner" role to "dbo"
-                sqlcmd -S $SERVER_IP -U $SA_USER -P $SA_PASSWORD -d $DATABASE -Q "
+                $SQLCMD -S $SERVER_IP -U $SA_USER -P $SA_PASSWORD -d $DATABASE -Q "
                 ALTER AUTHORIZATION ON ROLE::db_owner TO dbo;
                 "
                 ;;
@@ -102,7 +111,7 @@ while true; do
                 read -p "Enter the schema names to transfer ownership, separated by commas: " SCHEMA_NAMES
                 IFS=',' read -ra SCHEMA_ARRAY <<< "$SCHEMA_NAMES"
                 for SCHEMA_NAME in "${SCHEMA_ARRAY[@]}"; do
-                    sqlcmd -S $SERVER_IP -U $SA_USER -P $SA_PASSWORD -d $DATABASE -Q "
+                    $SQLCMD -S $SERVER_IP -U $SA_USER -P $SA_PASSWORD -d $DATABASE -Q "
                     ALTER AUTHORIZATION ON SCHEMA::[${SCHEMA_NAME// /}] TO dbo;
                     "
                 done
@@ -112,14 +121,14 @@ while true; do
                 read -p "Enter the schema names, separated by commas: " SCHEMA_NAMES
                 IFS=',' read -ra SCHEMA_ARRAY <<< "$SCHEMA_NAMES"
                 for SCHEMA_NAME in "${SCHEMA_ARRAY[@]}"; do
-                    sqlcmd -S $SERVER_IP -U $SA_USER -P $SA_PASSWORD -d $DATABASE -Q "
+                    $SQLCMD -S $SERVER_IP -U $SA_USER -P $SA_PASSWORD -d $DATABASE -Q "
                     ALTER AUTHORIZATION ON SCHEMA::[${SCHEMA_NAME// /}] TO [$TARGET_USER];
                     "
                 done
                 ;;
             7)
                 # Query to Drop the target user from the target database
-                sqlcmd -S $SERVER_IP -U $SA_USER -P $SA_PASSWORD -d $DATABASE -Q "
+                $SQLCMD -S $SERVER_IP -U $SA_USER -P $SA_PASSWORD -d $DATABASE -Q "
                 DROP USER [$TARGET_USER];
                 "
                 ;;
